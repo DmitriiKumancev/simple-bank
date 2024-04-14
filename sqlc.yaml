@@ -1,0 +1,20 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    queries: "./db/query/"
+    schema: "./db/migration/"
+    gen:
+      go:
+        out: "./db/sqlc"
+        package: "db"
+        output_models_file_name: "models_gen.go"
+        output_querier_file_name: "querier_gen.go"
+        output_batch_file_name: "batch_gen.go"
+        output_db_file_name: "db_gen.go"
+        output_copyfrom_file_name: "copyfrom_gen.go"
+        query_parameter_limit: 5
+        json_tags_case_style: "camel"
+        build_tags: "json1"
+        emit_json_tags: true
+        emit_prepared_queries: false
+        emit_exact_table_names: false
