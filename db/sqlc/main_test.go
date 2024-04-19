@@ -15,7 +15,7 @@ var testQueries *Queries
 func init() {
 	err := godotenv.Load("../../.env")
 	if err != nil {
-        log.Fatalf("Ошибка загрузки файла .env: %v", err)
+		log.Fatalf("Ошибка загрузки файла .env: %v", err)
 	}
 }
 
