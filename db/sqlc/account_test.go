@@ -70,3 +70,5 @@ func TestUpdateAccount(t *testing.T) {
 	require.Equal(t, account1.Currency, account2.Currency)
 	require.WithinDuration(t, account1.CreatedAt, account2.CreatedAt, time.Second)
 }
+
+// delete func 
