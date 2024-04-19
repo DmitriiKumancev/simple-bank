@@ -71,4 +71,35 @@ func TestUpdateAccount(t *testing.T) {
 	require.WithinDuration(t, account1.CreatedAt, account2.CreatedAt, time.Second)
 }
 
-// delete func 
+func TestDeleteAccount(t *testing.T) {
+	account1 := createRandomAccount(t)
+	err := testQueries.DeleteAccount(context.Background(), account1.ID)
+	require.NoError(t, err)
+
+	account2, err := testQueries.GetAcount(context.Background(), account1.ID)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "no rows in result set")
+	require.Empty(t, account2)
+}
+
+// create some entries for right testing this function
+func TestListAccounts(t *testing.T) {
+	for i := 0; i < 10; i++ {
+		createRandomAccount(t)
+	}
+
+	arg := ListAccountsParams{
+		Limit: 5,
+		Offset: 5,
+	}
+
+	accounts, err := testQueries.ListAccounts(context.Background(), arg)
+	require.NoError(t, err)
+	require.Len(t, accounts, 5)
+
+	// we must seeing list  of accounts and they not be not empty
+	for _, account := range accounts {
+		require.NotEmpty(t, account)
+	}
+
+}
