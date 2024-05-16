@@ -39,7 +39,6 @@ func TestTransferTx(t *testing.T) {
 		}()
 	}
 
-
 	existed := make(map[int]bool)
 	// затем мы проверяем эти ошибки и результаты извне
 	for i := 0; i < n; i++ {
@@ -61,7 +60,7 @@ func TestTransferTx(t *testing.T) {
 		require.NotZero(t, transfer.ID)
 		require.NotZero(t, transfer.CreatedAt)
 
-		// убедимся что запись о переводе действительно создана в бд 
+		// убедимся что запись о переводе действительно создана в бд
 		_, err = store.GetTransfer(context.Background(), transfer.ID)
 		require.NoError(t, err)
 
@@ -87,7 +86,7 @@ func TestTransferTx(t *testing.T) {
 		_, err = store.GetEntry(context.Background(), toEntry.ID)
 		require.NoError(t, err)
 
-		// TODO: проверим выходные счета и их балансы учетных записей 
+		// TODO: проверим выходные счета и их балансы учетных записей
 		// начнем со счетов - точнее с счета с которого уходят деньги
 		fromAccount := result.FromAccount
 		require.NotEmpty(t, fromAccount)
@@ -119,9 +118,64 @@ func TestTransferTx(t *testing.T) {
 	require.NoError(t, err)
 
 	fmt.Println(">> after:", updatedAccount1.Balance, updatedAccount2.Balance)
-	require.Equal(t, account1.Balance - int64(n) * amount, updatedAccount1.Balance)
-	require.Equal(t, account2.Balance + int64(n) * amount, updatedAccount2.Balance)
+	require.Equal(t, account1.Balance-int64(n)*amount, updatedAccount1.Balance)
+	require.Equal(t, account2.Balance+int64(n)*amount, updatedAccount2.Balance)
 
 }
 
+func TestTransferTxDeadlock(t *testing.T) {
+	store := NewStore(testDB)
 
+	account1 := createRandomAccount(t)
+	account2 := createRandomAccount(t)
+	fmt.Println(">> before:", account1.Balance, account2.Balance)
+
+	// чтобы убедиться, что наша транзакция работает хорошо - можно запустить несколько горутин
+	n := 14
+	amount := int64(10)
+
+	// канал для горутин и их обмена данными без явной блокировки
+	errs := make(chan error)               // канал для получения ошибок
+
+	for i := 0; i < n; i++ {
+		fromAcconutID := account1.ID
+		ToAccountID := account2.ID
+
+		if i%2 == 1 {
+			fromAcconutID = account2.ID
+			ToAccountID = account1.ID
+		}
+
+		go func() {
+			ctx := context.Background()
+			_, err := store.TransferTx(ctx, TransferTxParams{
+				FromAccountID: fromAcconutID,
+				ToAccountID:   ToAccountID,
+				Ammount:       amount,
+			})
+
+			errs <- err
+
+		}()
+	}
+
+	// затем мы проверяем эти ошибки и результаты извне
+	for i := 0; i < n; i++ {
+		// чтобы получить ошибку из канала мы используем тот же оператор <-, что и внутри функции, но на этот раз канал находится справа от стрелки, а переменная для хранения полученных данных слева
+		err := <-errs
+		//полученная ошибка должна быть равна нулю
+		require.NoError(t, err)
+	}
+
+	// проверим окончательный баланс каждого счета
+	updatedAccount1, err := testQueries.GetAccount(context.Background(), account1.ID)
+	require.NoError(t, err)
+
+	updatedAccount2, err := testQueries.GetAccount(context.Background(), account2.ID)
+	require.NoError(t, err)
+
+	fmt.Println(">> after:", updatedAccount1.Balance, updatedAccount2.Balance)
+	require.Equal(t, account1.Balance, updatedAccount1.Balance)
+	require.Equal(t, account2.Balance, updatedAccount2.Balance)
+
+}
